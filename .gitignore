@@ -48,3 +48,7 @@ _writetest*
 .dsh-*.tmp
 *.orig
 *.rej
+
+# ---- 文档渲染临时产物 ----
+docs/_render*/
+_docx-check.json
