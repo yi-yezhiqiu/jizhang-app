@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 极简主题：只负责去掉系统 ActionBar 与设置背景色，
+         界面外观全部由网页层控制，不引入 AppCompat 等外部依赖。 -->
+    <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand_bg</item>
+        <item name="android:colorBackground">@color/brand_bg</item>
+        <item name="android:statusBarColor">@color/brand_bg</item>
+        <item name="android:navigationBarColor">@color/brand_bar</item>
+    </style>
+</resources>

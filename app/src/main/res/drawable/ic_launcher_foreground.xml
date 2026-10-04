@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 应用图标前景层：绿色圆形记账符号 + 三条账目横线。
+     形状都控制在安全区内（中心 72x72 范围内），避免被圆形/方形遮罩切边。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 圆底 -->
+    <path
+        android:fillColor="#4ade80"
+        android:pathData="M54,32 a22,22 0 1,0 0.1,0 z" />
+    <!-- 三条账目横线 -->
+    <path
+        android:fillColor="#0f1620"
+        android:pathData="M43,45 L65,45 L65,49 L43,49 Z" />
+    <path
+        android:fillColor="#0f1620"
+        android:pathData="M43,53 L65,53 L65,57 L43,57 Z" />
+    <path
+        android:fillColor="#0f1620"
+        android:pathData="M43,61 L58,61 L58,65 L43,65 Z" />
+</vector>

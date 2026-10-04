@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#faf7f2">
+<title>记账</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ================= 首页：上半流水 / 下半记一笔 ================= -->
+<section class="page page-home" id="page-home">
+
+  <!-- 收支切换与日期：刻意放在记账面板之外、固定在屏幕上方。
+       原因：键盘弹起时记账面板会被系统上推，面板内的按钮会被其他元素盖住、
+       点了没反应。放在这里它就一直可点。
+       顺序：收支切换 -> 记一笔（金额/分类/备注）-> 流水列表。 -->
+  <div class="top-row" id="topRow">
+    <div class="type-switch" id="typeSwitch">
+      <button class="type-btn is-active" data-type="expense" type="button">支出</button>
+      <button class="type-btn" data-type="income" type="button">收入</button>
+    </div>
+    <button class="date-chip" id="dateChip" type="button">
+      <span id="dateChipText">今天</span><span class="caret" aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <!-- 上半：本月汇总 + 流水 -->
+  <div class="list-zone" id="listZone">
+    <div class="summary-bar" id="summaryBar"></div>
+    <div class="list-scroll" id="listScroll"></div>
+  </div>
+
+  <!-- 下半：记一笔（金额 / 分类 / 备注 + 保存） -->
+  <div class="entry-zone" id="entryZone">
+    <div class="amount-row" id="amountRow">
+      <span class="cur">¥</span>
+      <!-- 用 type="tel" 而不是 inputmode：
+           - inputmode="decimal" 在部分安卓输入法上会"键盘弹出但打不进字"（踩过）
+           - 不带任何提示则弹普通全键盘，输金额很别扭
+           type="tel" 在安卓上稳定弹数字键盘，且没有上述副作用；
+           小数与非法字符由 JS 的 sanitizeAmount 兜住。 -->
+      <input type="tel" id="amountInput" class="amount-input"
+             placeholder="0" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+
+    <!-- 外面包一层用于做右侧渐隐，提示"后面还有更多分类" -->
+    <div class="cat-wrap">
+      <div class="cat-strip" id="catStrip"></div>
+    </div>
+
+    <div class="note-row entry-note-row">
+      <input type="text" id="noteInput" class="note-input"
+             placeholder="备注（可不填）" maxlength="100" autocomplete="off">
+      <button class="save-btn" id="saveBtn" type="button" disabled>保存</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 本月 ================= -->
+<section class="page page-month" id="page-month" hidden>
+  <div class="month-nav">
+    <button class="nav-btn" id="prevMonth" type="button">‹</button>
+    <div class="month-title" id="monthTitle"></div>
+    <button class="nav-btn" id="nextMonth" type="button">›</button>
+  </div>
+  <div class="month-scroll" id="monthScroll"></div>
+</section>
+
+<!-- ================= 设置 ================= -->
+<section class="page page-settings" id="page-settings" hidden>
+  <div class="settings-scroll">
+    <div class="card">
+      <div class="card-title">分类管理</div>
+      <div class="card-hint">预置分类不可删除；自定义分类只有在没有任何记录使用时才能删。用 ▲ ▼ 调整顺序（只在同一组内移动），记账时的分类顺序会跟着变。</div>
+      <div id="catManage"></div>
+      <div class="cat-add-row">
+        <select id="newCatType" class="select">
+          <option value="expense">支出</option>
+          <option value="income">收入</option>
+        </select>
+        <input type="text" id="newCatIcon" class="text-input icon-input" placeholder="🏷️" maxlength="4">
+        <input type="text" id="newCatName" class="text-input" placeholder="新分类名" maxlength="8">
+        <button class="btn btn-primary" id="addCatBtn" type="button">添加</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">数据</div>
+      <div class="card-hint" id="dataInfo"></div>
+      <div class="danger-note">
+        数据只存在这台手机的 App 内，不联网、不上传。
+        <b>卸载 App 或清除 App 数据会永久丢失，无法恢复。</b>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">关于</div>
+      <div class="card-hint">
+        记账 v1.0<br>
+        完全离线运行，无账号、无网络请求、不收集任何数据。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 攒钱目标 ================= -->
+<section class="page page-goals" id="page-goals" hidden>
+  <div class="goals-head">
+    <div class="goals-title">攒钱目标</div>
+    <button class="btn btn-primary goals-add" id="addGoalBtn" type="button">＋ 新建</button>
+  </div>
+  <div class="goals-scroll" id="goalsScroll"></div>
+</section>
+
+<!-- ================= 底部导航 ================= -->
+<nav class="tabbar" id="tabbar">
+  <button class="tab is-active" data-page="home" type="button">
+    <span class="tab-ico">✏️</span><span>记一笔</span>
+  </button>
+  <button class="tab" data-page="month" type="button">
+    <span class="tab-ico">📊</span><span>本月</span>
+  </button>
+  <button class="tab" data-page="goals" type="button">
+    <span class="tab-ico">🐷</span><span>攒钱</span>
+  </button>
+  <button class="tab" data-page="settings" type="button">
+    <span class="tab-ico">⚙️</span><span>设置</span>
+  </button>
+</nav>
+
+<!-- ================= 编辑记录弹层 ================= -->
+<div class="mask" id="editMask" hidden>
+  <div class="sheet">
+    <div class="sheet-title">编辑记录</div>
+    <div class="sheet-body">
+      <div class="field">
+        <div class="field-label">收支类型</div>
+        <div class="seg" id="editTypeSeg">
+          <button class="seg-btn is-active" data-type="expense" type="button">支出</button>
+          <button class="seg-btn" data-type="income" type="button">收入</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">金额</div>
+        <input type="text" id="editAmount" class="text-input">
+      </div>
+      <div class="field">
+        <div class="field-label">分类</div>
+        <div class="mini-cats" id="editCats"></div>
+      </div>
+      <div class="field">
+        <div class="field-label">日期</div>
+        <input type="date" id="editDate" class="text-input">
+      </div>
+      <div class="field">
+        <div class="field-label">备注</div>
+        <input type="text" id="editNote" class="text-input" maxlength="100">
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-danger" id="editDelete" type="button">删除</button>
+      <button class="btn" id="editCancel" type="button">取消</button>
+      <button class="btn btn-primary" id="editSave" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 日期选择弹层 ================= -->
+<div class="mask" id="dateMask" hidden>
+  <div class="sheet">
+    <div class="sheet-title">选择日期</div>
+    <div class="sheet-body">
+      <input type="date" id="datePicker" class="text-input">
+      <div class="quick-dates">
+        <button class="btn btn-ghost" data-quick="0" type="button">今天</button>
+        <button class="btn btn-ghost" data-quick="-1" type="button">昨天</button>
+        <button class="btn btn-ghost" data-quick="-2" type="button">前天</button>
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn" id="dateCancel" type="button">取消</button>
+      <button class="btn btn-primary" id="dateOk" type="button">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 确认弹层 ================= -->
+<div class="mask" id="confirmMask" hidden>
+  <div class="sheet sheet-narrow">
+    <div class="sheet-title" id="confirmTitle">确认</div>
+    <div class="sheet-body"><div class="confirm-msg" id="confirmMsg"></div></div>
+    <div class="sheet-actions">
+      <button class="btn" id="confirmNo" type="button">取消</button>
+      <button class="btn btn-danger" id="confirmYes" type="button">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 攒钱目标：创建 / 编辑弹层 ================= -->
+<div class="mask" id="goalMask" hidden>
+  <div class="sheet">
+    <div class="sheet-title" id="goalMaskTitle">新建目标</div>
+    <div class="sheet-body">
+      <div class="field">
+        <div class="field-label">名称</div>
+        <input type="text" id="goalName" class="text-input" maxlength="20" placeholder="例如：换新手机">
+      </div>
+      <div class="field">
+        <div class="field-label">目标金额（元）</div>
+        <input type="tel" id="goalAmount" class="text-input" placeholder="0" autocomplete="off">
+      </div>
+      <div class="field">
+        <div class="field-label">目标日期（可不填）</div>
+        <div class="goal-date-row">
+          <input type="date" id="goalDate" class="text-input">
+          <button class="btn" id="goalDateClear" type="button">清除</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">图标</div>
+        <div class="goal-icons" id="goalIcons"></div>
+        <input type="text" id="goalIcon" class="text-input goal-icon-input" maxlength="4" placeholder="或手输 emoji">
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-danger" id="goalDelete" type="button" hidden>删除</button>
+      <button class="btn" id="goalCancel" type="button">取消</button>
+      <button class="btn btn-primary" id="goalSave" type="button">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 攒钱目标：存入 / 取出金额弹层 ================= -->
+<!-- 输入的是「本次」金额：存入记一笔 expense、取出记一笔 income（带 goalId/savingsKind），
+     已攒金额由这些记录自动汇总，目标对象上不再存已攒金额。 -->
+<div class="mask" id="savedMask" hidden>
+  <div class="sheet">
+    <div class="sheet-title" id="savedMaskTitle">存入金额</div>
+    <div class="sheet-body">
+      <div class="card-hint" id="savedGoalHint"></div>
+      <div class="field">
+        <div class="field-label" id="savedAmountLabel">本次存入（元）</div>
+        <input type="tel" id="savedAmountInput" class="text-input" placeholder="0" autocomplete="off">
+      </div>
+      <div class="card-hint" id="savedTip">输入本次要存入的金额，会记成一笔攒钱记录。</div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn" id="savedCancel" type="button">取消</button>
+      <button class="btn btn-primary" id="savedOk" type="button">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
