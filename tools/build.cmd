@@ -14,10 +14,21 @@ REM   3. apksigner must NOT be wrapped in double quotes; invoke it directly.
 REM   4. zipalign must run BEFORE apksigner, otherwise the signature breaks.
 REM   5. d8 needs JAVA_HOME set.
 REM   6. aapt2 link needs --auto-add-overlay or resources fail to merge.
+REM   7. apksigner.bat ends with a bare "exit"; call it via CALL or this script
+REM      gets terminated silently right after signing.
+REM   8. aapt2 on Windows writes asset entry names with backslashes; run
+REM      normalize_apk.py afterwards or the WebView cannot find its assets.
+REM
+REM  Toolchain locations come from environment variables so this script carries
+REM  no machine-specific paths. Override them if your JDK / SDK live elsewhere;
+REM  the defaults match the layout described in tools/README.md.
 REM ============================================================
 
-set "JDK=D:\android-jdk"
-set "SDK=D:\android-sdk"
+if not defined JZ_JDK set "JZ_JDK=D:\android-jdk"
+if not defined JZ_SDK set "JZ_SDK=D:\android-sdk"
+
+set "JDK=%JZ_JDK%"
+set "SDK=%JZ_SDK%"
 set "BT=%SDK%\build-tools\35.0.0"
 set "PLATFORM=%SDK%\platforms\android-35\android.jar"
 set "JAVA_HOME=%JDK%"

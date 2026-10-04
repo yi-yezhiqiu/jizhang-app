@@ -1,9 +1,18 @@
 # 修 AVD 目录写权限并拉起常驻模拟器
-# 背景：D:\手机记账app\.android-env\avd-home 及其子树缺少登录用户的完全控制权，
-#      导致 emulator 冷启动无法创建 snapshot.lock.lock（error 5），卡在 11MB 永不 boot。
-#      工作区根目录有 CUI\13621:(F) 所以能写，AVD 目录没有。
+#
+# 背景：AVD 目录及其子树缺少「登录用户」的完全控制权时，
+#      emulator 冷启动无法创建 snapshot.lock.lock（error 5），
+#      进程会卡在十几 MB 内存永不 boot（正常引导应是数千 MB）。
+#      本脚本把当前登录用户的完全控制权补到 AVD 目录上。
+#
+# 用法：在仓库根目录执行
+#      powershell -NoProfile -ExecutionPolicy Bypass -File tools\fix-avd-acl.ps1
+#
+# 注意：本仓库刻意不含任何机器相关的绝对路径与账号名，全部按脚本位置与
+#      环境变量推导，方便别人 clone 后直接用。
 
-$root = 'D:\手机记账app'
+# 仓库根 = 本脚本所在目录的上一级
+$root = Split-Path -Parent $PSScriptRoot
 $target = Join-Path $root '.android-env\avd-home'
 $me = '{0}\{1}' -f $env:USERDOMAIN, $env:USERNAME
 
@@ -24,10 +33,11 @@ $grantArg = '{0}:(OI)(CI)F' -f $me
 & icacls.exe $target /grant $grantArg /T /C 2>&1 | Select-Object -Last 3
 
 Write-Output "=== 3) 复核 ACL ==="
+# 只看是否出现了当前登录用户的条目（不写死任何账号名）
 $acl = & icacls.exe $target 2>&1
-$acl | Where-Object { $_ -match '13621|CUI|Successfully' }
-$sub = & icacls.exe (Join-Path $target 'jizhang_test.avd') 2>&1
-$sub | Where-Object { $_ -match '13621|CUI|Successfully' }
+$acl | Where-Object { $_ -match [regex]::Escape($env:USERNAME) } | ForEach-Object { "  $_" }
+& icacls.exe (Join-Path $target 'jizhang_test.avd') 2>&1 |
+    Where-Object { $_ -match [regex]::Escape($env:USERNAME) } | ForEach-Object { "  子目录: $_" }
 
 Write-Output "=== 4) 实测写权限 ==="
 $probe = Join-Path $target '.write-probe.tmp'
